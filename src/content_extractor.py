@@ -1,0 +1,393 @@
+"""
+Content Extractor für Website Compliance Crawler.
+
+Extrahiert strukturierte Inhalte von Webseiten für spätere Compliance-Analyse.
+"""
+
+import requests
+from bs4 import BeautifulSoup
+from typing import Dict, List, Optional
+from urllib.parse import urljoin, urlparse
+import re
+
+
+# Timeout für HTTP Requests (Sekunden)
+REQUEST_TIMEOUT = 15
+
+# User Agent für Requests
+USER_AGENT = 'Mozilla/5.0 (compatible; ComplianceCrawler/1.0)'
+
+
+def fetch_html(url: str) -> str:
+    """
+    Fetcht HTML-Content von einer URL.
+
+    Args:
+        url: Die URL zum Fetchen
+
+    Returns:
+        HTML-Content als String
+
+    Raises:
+        requests.RequestException: Bei Netzwerkfehlern
+    """
+    try:
+        response = requests.get(
+            url,
+            timeout=REQUEST_TIMEOUT,
+            headers={'User-Agent': USER_AGENT},
+            allow_redirects=True
+        )
+        response.raise_for_status()
+        return response.text
+
+    except requests.Timeout:
+        raise requests.RequestException(f"Timeout beim Laden von {url}")
+    except requests.HTTPError as e:
+        raise requests.RequestException(
+            f"HTTP Fehler {e.response.status_code}: {url}"
+        )
+    except Exception as e:
+        raise requests.RequestException(f"Fehler beim Laden von {url}: {str(e)}")
+
+
+def clean_text(text: str) -> str:
+    """
+    Bereinigt Text von überflüssigen Whitespaces und Zeilenumbrüchen.
+
+    Args:
+        text: Der zu bereinigende Text
+
+    Returns:
+        Bereinigter Text
+    """
+    if not text:
+        return ""
+
+    # Entferne mehrfache Whitespaces
+    text = re.sub(r'\s+', ' ', text)
+
+    # Entferne führende/trailing Whitespaces
+    text = text.strip()
+
+    return text
+
+
+def extract_headings(soup: BeautifulSoup) -> Dict[str, List[str]]:
+    """
+    Extrahiert alle Überschriften (h1-h3) aus dem HTML.
+
+    Args:
+        soup: BeautifulSoup Objekt
+
+    Returns:
+        Dictionary mit Listen von Überschriften pro Level
+    """
+    headings = {
+        'h1': [],
+        'h2': [],
+        'h3': []
+    }
+
+    for level in ['h1', 'h2', 'h3']:
+        elements = soup.find_all(level)
+        for elem in elements:
+            text = clean_text(elem.get_text())
+            if text:
+                headings[level].append(text)
+
+    return headings
+
+
+def extract_meta_description(soup: BeautifulSoup) -> str:
+    """
+    Extrahiert die Meta Description.
+
+    Args:
+        soup: BeautifulSoup Objekt
+
+    Returns:
+        Meta Description oder leerer String
+    """
+    # Versuche verschiedene Meta-Tags
+    meta_tags = [
+        soup.find('meta', {'name': 'description'}),
+        soup.find('meta', {'property': 'og:description'}),
+        soup.find('meta', {'name': 'twitter:description'})
+    ]
+
+    for meta in meta_tags:
+        if meta and meta.get('content'):
+            return clean_text(meta.get('content'))
+
+    return ""
+
+
+def extract_title(soup: BeautifulSoup) -> str:
+    """
+    Extrahiert den Seitentitel.
+
+    Priorisierung:
+    1. <title> Tag
+    2. Erste <h1> Überschrift
+    3. og:title Meta Tag
+
+    Args:
+        soup: BeautifulSoup Objekt
+
+    Returns:
+        Seitentitel oder leerer String
+    """
+    # 1. <title> Tag
+    title_tag = soup.find('title')
+    if title_tag:
+        title = clean_text(title_tag.get_text())
+        if title:
+            return title
+
+    # 2. Erste <h1>
+    h1 = soup.find('h1')
+    if h1:
+        title = clean_text(h1.get_text())
+        if title:
+            return title
+
+    # 3. og:title
+    og_title = soup.find('meta', {'property': 'og:title'})
+    if og_title and og_title.get('content'):
+        return clean_text(og_title.get('content'))
+
+    return ""
+
+
+def extract_cta_buttons(soup: BeautifulSoup) -> List[str]:
+    """
+    Extrahiert Call-to-Action Button-Texte.
+
+    Sucht nach:
+    - <button> Tags
+    - <a> Tags mit Button-ähnlichen Klassen
+    - Submit Inputs
+
+    Args:
+        soup: BeautifulSoup Objekt
+
+    Returns:
+        Liste von CTA-Texten
+    """
+    cta_texts = []
+
+    # 1. <button> Tags
+    buttons = soup.find_all('button')
+    for button in buttons:
+        text = clean_text(button.get_text())
+        if text:
+            cta_texts.append(text)
+
+    # 2. <a> Tags mit button/btn Klassen
+    button_links = soup.find_all('a', class_=re.compile(r'btn|button', re.I))
+    for link in button_links:
+        text = clean_text(link.get_text())
+        if text and text not in cta_texts:
+            cta_texts.append(text)
+
+    # 3. Submit Inputs
+    submit_inputs = soup.find_all('input', {'type': 'submit'})
+    for input_elem in submit_inputs:
+        value = input_elem.get('value')
+        if value:
+            text = clean_text(value)
+            if text and text not in cta_texts:
+                cta_texts.append(text)
+
+    return cta_texts
+
+
+def extract_main_content(soup: BeautifulSoup) -> str:
+    """
+    Extrahiert den Hauptinhalt der Seite.
+
+    Sucht nach:
+    1. <main> Tag
+    2. <article> Tag
+    3. <div> mit class/id "content", "main", "article"
+    4. Fallback: Gesamter <body> Text (ohne Script/Style)
+
+    Args:
+        soup: BeautifulSoup Objekt
+
+    Returns:
+        Hauptinhalt als Text
+    """
+    # Entferne Scripts, Styles, Navigation, Footer, Header
+    for tag in soup(['script', 'style', 'nav', 'footer', 'header', 'aside']):
+        tag.decompose()
+
+    # 1. <main> Tag
+    main = soup.find('main')
+    if main:
+        return clean_text(main.get_text())
+
+    # 2. <article> Tag
+    article = soup.find('article')
+    if article:
+        return clean_text(article.get_text())
+
+    # 3. Div mit Content-ähnlichen Klassen/IDs
+    content_div = soup.find('div', {'class': re.compile(r'content|main|article', re.I)})
+    if not content_div:
+        content_div = soup.find('div', {'id': re.compile(r'content|main|article', re.I)})
+
+    if content_div:
+        return clean_text(content_div.get_text())
+
+    # 4. Fallback: Body
+    body = soup.find('body')
+    if body:
+        return clean_text(body.get_text())
+
+    return ""
+
+
+def extract_product_info(soup: BeautifulSoup) -> Dict[str, str]:
+    """
+    Extrahiert Produkt-spezifische Informationen (für E-Commerce Sites).
+
+    Sucht nach Schema.org Product Markup und anderen E-Commerce Patterns.
+
+    Args:
+        soup: BeautifulSoup Objekt
+
+    Returns:
+        Dictionary mit Produktinformationen
+    """
+    product_info = {
+        'name': '',
+        'description': '',
+        'price': ''
+    }
+
+    # Schema.org Product Markup
+    product_schema = soup.find(attrs={'itemtype': re.compile(r'schema.org/Product', re.I)})
+
+    if product_schema:
+        # Product Name
+        name = product_schema.find(attrs={'itemprop': 'name'})
+        if name:
+            product_info['name'] = clean_text(name.get_text())
+
+        # Product Description
+        description = product_schema.find(attrs={'itemprop': 'description'})
+        if description:
+            product_info['description'] = clean_text(description.get_text())
+
+        # Price
+        price = product_schema.find(attrs={'itemprop': 'price'})
+        if price:
+            product_info['price'] = clean_text(price.get_text())
+
+    # Fallback: Meta Tags
+    if not product_info['name']:
+        og_title = soup.find('meta', {'property': 'og:title'})
+        if og_title:
+            product_info['name'] = clean_text(og_title.get('content', ''))
+
+    if not product_info['description']:
+        og_desc = soup.find('meta', {'property': 'og:description'})
+        if og_desc:
+            product_info['description'] = clean_text(og_desc.get('content', ''))
+
+    return product_info
+
+
+def extract_content(url: str) -> Dict:
+    """
+    Extrahiert alle relevanten Inhalte von einer URL.
+
+    Dies ist die Hauptfunktion die alle anderen Extraktionsfunktionen orchestriert.
+
+    Args:
+        url: Die URL zum Analysieren
+
+    Returns:
+        Dictionary mit strukturierten Content-Daten:
+        {
+            'url': str,
+            'title': str,
+            'meta_description': str,
+            'headings': {
+                'h1': List[str],
+                'h2': List[str],
+                'h3': List[str]
+            },
+            'main_content': str,
+            'cta_buttons': List[str],
+            'product_info': Dict[str, str],
+            'error': Optional[str]
+        }
+
+    Example:
+        content = extract_content('https://example.com/product')
+        print(content['title'])
+        print(content['main_content'])
+    """
+    result = {
+        'url': url,
+        'title': '',
+        'meta_description': '',
+        'headings': {'h1': [], 'h2': [], 'h3': []},
+        'main_content': '',
+        'cta_buttons': [],
+        'product_info': {'name': '', 'description': '', 'price': ''},
+        'error': None
+    }
+
+    try:
+        # 1. HTML fetchen
+        html = fetch_html(url)
+
+        # 2. HTML parsen
+        soup = BeautifulSoup(html, 'html.parser')
+
+        # 3. Daten extrahieren
+        result['title'] = extract_title(soup)
+        result['meta_description'] = extract_meta_description(soup)
+        result['headings'] = extract_headings(soup)
+        result['main_content'] = extract_main_content(soup)
+        result['cta_buttons'] = extract_cta_buttons(soup)
+        result['product_info'] = extract_product_info(soup)
+
+    except Exception as e:
+        result['error'] = str(e)
+
+    return result
+
+
+def extract_multiple_urls(urls: List[str]) -> List[Dict]:
+    """
+    Extrahiert Content von mehreren URLs.
+
+    Args:
+        urls: Liste von URLs
+
+    Returns:
+        Liste von Content-Dictionaries
+
+    Example:
+        urls = ['https://example.com/page1', 'https://example.com/page2']
+        results = extract_multiple_urls(urls)
+        for result in results:
+            print(f"{result['url']}: {result['title']}")
+    """
+    results = []
+
+    for url in urls:
+        print(f"Extracting: {url}")
+        content = extract_content(url)
+        results.append(content)
+
+        # Kleine Pause um Server nicht zu überlasten
+        import time
+        time.sleep(0.5)
+
+    return results
