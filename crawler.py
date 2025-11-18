@@ -82,7 +82,7 @@ def crawl_urls_only(domain: str, output_dir: Path) -> Dict:
     return urls_data
 
 
-def crawl_with_content(domain: str, output_dir: Path, max_urls: int = None) -> tuple:
+def crawl_with_content(domain: str, output_dir: Path, max_urls: int = None, categories: List[str] = None) -> tuple:
     """
     Crawlt Sitemap UND extrahiert Content von allen URLs.
 
@@ -90,6 +90,7 @@ def crawl_with_content(domain: str, output_dir: Path, max_urls: int = None) -> t
         domain: Die Domain zum Crawlen
         output_dir: Output-Verzeichnis
         max_urls: Maximale Anzahl URLs zum Extrahieren (None = alle)
+        categories: Liste von Kategorien zum Filtern (None = alle)
 
     Returns:
         Tuple von (urls_data, content_data)
@@ -97,10 +98,23 @@ def crawl_with_content(domain: str, output_dir: Path, max_urls: int = None) -> t
     # 1. Crawl URLs
     urls_data = crawl_urls_only(domain, output_dir)
 
-    # 2. Sammle alle URLs aus allen Kategorien
+    # 2. Sammle URLs basierend auf Kategorien
     all_urls = []
-    for category, urls in urls_data['urls'].items():
-        all_urls.extend(urls)
+
+    if categories:
+        # Nur ausgewählte Kategorien
+        print(f"\n🔍 Filtering categories: {', '.join(categories)}")
+        for category in categories:
+            if category in urls_data['urls']:
+                urls = urls_data['urls'][category]
+                all_urls.extend(urls)
+                print(f"  {category}: {len(urls)} URLs")
+            else:
+                print(f"  ⚠️  Category '{category}' not found")
+    else:
+        # Alle Kategorien
+        for category, urls in urls_data['urls'].items():
+            all_urls.extend(urls)
 
     # Limitiere URLs wenn gewünscht
     if max_urls and len(all_urls) > max_urls:
@@ -166,8 +180,14 @@ Examples:
   # URLs + Content crawlen (langsam, für Compliance-Analyse)
   %(prog)s --domain probiom.com --extract-content
 
-  # Nur erste 10 URLs mit Content
-  %(prog)s --domain probiom.com --extract-content --max-urls 10
+  # Nur Produkte mit Content extrahieren
+  %(prog)s --domain probiom.com --extract-content --categories products
+
+  # Mehrere Kategorien
+  %(prog)s --domain probiom.com --extract-content --categories products,pages
+
+  # Nur erste 50 Blog-Posts
+  %(prog)s --domain probiom.com --extract-content --categories blogs --max-urls 50
         """
     )
 
@@ -190,6 +210,12 @@ Examples:
     )
 
     parser.add_argument(
+        '--categories',
+        type=str,
+        help='Komma-separierte Liste von Kategorien (products,blogs,pages,collections,other)'
+    )
+
+    parser.add_argument(
         '--output',
         type=Path,
         default=Path('output'),
@@ -203,6 +229,21 @@ Examples:
         print("❌ --max-urls requires --extract-content")
         return 1
 
+    if args.categories and not args.extract_content:
+        print("❌ --categories requires --extract-content")
+        return 1
+
+    # Parse categories
+    categories = None
+    if args.categories:
+        categories = [cat.strip() for cat in args.categories.split(',')]
+        valid_categories = {'products', 'blogs', 'pages', 'collections', 'other'}
+        invalid = [cat for cat in categories if cat not in valid_categories]
+        if invalid:
+            print(f"❌ Invalid categories: {', '.join(invalid)}")
+            print(f"   Valid: {', '.join(valid_categories)}")
+            return 1
+
     # Start
     print("\n🚀 Website Compliance Crawler")
     print(f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -210,7 +251,7 @@ Examples:
     try:
         if args.extract_content:
             # Full Crawl mit Content
-            crawl_with_content(args.domain, args.output, args.max_urls)
+            crawl_with_content(args.domain, args.output, args.max_urls, categories)
         else:
             # Nur URLs
             crawl_urls_only(args.domain, args.output)
