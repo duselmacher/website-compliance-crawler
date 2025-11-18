@@ -144,14 +144,16 @@ def categorize_url(url: str) -> str:
     path = parsed.path.lower()
 
     # Kategorisierung nach Pfad-Präfix
-    if '/product' in path:
-        return 'products'
-    elif '/blog' in path or '/artikel' in path or '/news' in path:
+    # WICHTIG: Spezifische Pfade zuerst prüfen, dann erst generische!
+    # Sonst würde z.B. /blogs/...product-tests... als 'products' kategorisiert
+    if '/blog' in path or '/artikel' in path or '/news' in path:
         return 'blogs'
     elif '/collection' in path or '/kategorie' in path or '/category' in path:
         return 'collections'
     elif '/page' in path or '/seite' in path:
         return 'pages'
+    elif '/product' in path:
+        return 'products'
     else:
         return 'other'
 
