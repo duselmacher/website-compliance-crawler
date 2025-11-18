@@ -160,93 +160,76 @@ def extract_title(soup: BeautifulSoup) -> str:
     return ""
 
 
-def extract_cta_buttons(soup: BeautifulSoup) -> List[str]:
+def extract_full_text(soup: BeautifulSoup) -> str:
     """
-    Extrahiert Call-to-Action Button-Texte.
+    Extrahiert den kompletten sichtbaren Text der Seite.
 
-    Sucht nach:
-    - <button> Tags
-    - <a> Tags mit Button-ähnlichen Klassen
-    - Submit Inputs
+    Entfernt nur nicht-sichtbare Elemente wie Scripts und Styles,
+    aber behält den gesamten Textinhalt der Seite.
 
     Args:
         soup: BeautifulSoup Objekt
 
     Returns:
-        Liste von CTA-Texten
+        Kompletter sichtbarer Text der Seite
     """
-    cta_texts = []
+    # Erstelle eine Kopie um Original nicht zu verändern
+    soup_copy = BeautifulSoup(str(soup), 'html.parser')
 
-    # 1. <button> Tags
-    buttons = soup.find_all('button')
-    for button in buttons:
-        text = clean_text(button.get_text())
-        if text:
-            cta_texts.append(text)
-
-    # 2. <a> Tags mit button/btn Klassen
-    button_links = soup.find_all('a', class_=re.compile(r'btn|button', re.I))
-    for link in button_links:
-        text = clean_text(link.get_text())
-        if text and text not in cta_texts:
-            cta_texts.append(text)
-
-    # 3. Submit Inputs
-    submit_inputs = soup.find_all('input', {'type': 'submit'})
-    for input_elem in submit_inputs:
-        value = input_elem.get('value')
-        if value:
-            text = clean_text(value)
-            if text and text not in cta_texts:
-                cta_texts.append(text)
-
-    return cta_texts
-
-
-def extract_main_content(soup: BeautifulSoup) -> str:
-    """
-    Extrahiert den Hauptinhalt der Seite.
-
-    Sucht nach:
-    1. <main> Tag
-    2. <article> Tag
-    3. <div> mit class/id "content", "main", "article"
-    4. Fallback: Gesamter <body> Text (ohne Script/Style)
-
-    Args:
-        soup: BeautifulSoup Objekt
-
-    Returns:
-        Hauptinhalt als Text
-    """
-    # Entferne Scripts, Styles, Navigation, Footer, Header
-    for tag in soup(['script', 'style', 'nav', 'footer', 'header', 'aside']):
+    # Entferne nur unsichtbare Elemente
+    for tag in soup_copy(['script', 'style', 'noscript']):
         tag.decompose()
 
-    # 1. <main> Tag
-    main = soup.find('main')
-    if main:
-        return clean_text(main.get_text())
-
-    # 2. <article> Tag
-    article = soup.find('article')
-    if article:
-        return clean_text(article.get_text())
-
-    # 3. Div mit Content-ähnlichen Klassen/IDs
-    content_div = soup.find('div', {'class': re.compile(r'content|main|article', re.I)})
-    if not content_div:
-        content_div = soup.find('div', {'id': re.compile(r'content|main|article', re.I)})
-
-    if content_div:
-        return clean_text(content_div.get_text())
-
-    # 4. Fallback: Body
-    body = soup.find('body')
+    # Hole kompletten Body-Text
+    body = soup_copy.find('body')
     if body:
         return clean_text(body.get_text())
 
-    return ""
+    # Fallback: Gesamter Text
+    return clean_text(soup_copy.get_text())
+
+
+def extract_images(soup: BeautifulSoup, base_url: str) -> List[Dict[str, str]]:
+    """
+    Extrahiert alle Bilder mit ihren Attributen.
+
+    Args:
+        soup: BeautifulSoup Objekt
+        base_url: Basis-URL für relative Links
+
+    Returns:
+        Liste von Dictionaries mit Bildinformationen:
+        [
+            {
+                'src': 'absolute URL',
+                'alt': 'alt text',
+                'title': 'title attribute'
+            },
+            ...
+        ]
+    """
+    images = []
+
+    for img in soup.find_all('img'):
+        src = img.get('src', '')
+
+        # Überspringe Bilder ohne src
+        if not src:
+            continue
+
+        # Konvertiere relative URLs zu absoluten
+        if src and not src.startswith(('http://', 'https://', 'data:')):
+            src = urljoin(base_url, src)
+
+        image_data = {
+            'src': src,
+            'alt': clean_text(img.get('alt', '')),
+            'title': clean_text(img.get('title', ''))
+        }
+
+        images.append(image_data)
+
+    return images
 
 
 def extract_product_info(soup: BeautifulSoup) -> Dict[str, str]:
@@ -315,13 +298,13 @@ def extract_content(url: str) -> Dict:
             'url': str,
             'title': str,
             'meta_description': str,
+            'full_text': str,
             'headings': {
                 'h1': List[str],
                 'h2': List[str],
                 'h3': List[str]
             },
-            'main_content': str,
-            'cta_buttons': List[str],
+            'images': List[Dict[str, str]],
             'product_info': Dict[str, str],
             'error': Optional[str]
         }
@@ -329,15 +312,15 @@ def extract_content(url: str) -> Dict:
     Example:
         content = extract_content('https://example.com/product')
         print(content['title'])
-        print(content['main_content'])
+        print(content['full_text'])
     """
     result = {
         'url': url,
         'title': '',
         'meta_description': '',
+        'full_text': '',
         'headings': {'h1': [], 'h2': [], 'h3': []},
-        'main_content': '',
-        'cta_buttons': [],
+        'images': [],
         'product_info': {'name': '', 'description': '', 'price': ''},
         'error': None
     }
@@ -352,9 +335,9 @@ def extract_content(url: str) -> Dict:
         # 3. Daten extrahieren
         result['title'] = extract_title(soup)
         result['meta_description'] = extract_meta_description(soup)
+        result['full_text'] = extract_full_text(soup)
         result['headings'] = extract_headings(soup)
-        result['main_content'] = extract_main_content(soup)
-        result['cta_buttons'] = extract_cta_buttons(soup)
+        result['images'] = extract_images(soup, url)
         result['product_info'] = extract_product_info(soup)
 
     except Exception as e:

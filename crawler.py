@@ -71,14 +71,6 @@ def crawl_urls_only(domain: str, output_dir: Path) -> Dict:
 
     print_stats(urls_data)
 
-    # Save URLs
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    domain_clean = clean_domain_for_filename(domain)
-    urls_file = output_dir / f"{domain_clean}_{timestamp}_urls.json"
-
-    save_json(urls_data, urls_file)
-    print(f"\n💾 URLs saved to: {urls_file}")
-
     return urls_data
 
 

@@ -37,12 +37,12 @@ if result['headings']['h2']:
         print(f"    - {h2}")
 print(f"  H3: {len(result['headings']['h3'])} found")
 
-print(f"\nMain Content: {len(result['main_content'])} characters")
-print(f"First 200 chars: {result['main_content'][:200]}...")
+print(f"\nFull Text: {len(result['full_text'])} characters")
+print(f"First 200 chars: {result['full_text'][:200]}...")
 
-print(f"\nCTA Buttons: {len(result['cta_buttons'])} found")
-for cta in result['cta_buttons'][:5]:
-    print(f"  - {cta}")
+print(f"\nImages: {len(result['images'])} found")
+for img in result['images'][:5]:
+    print(f"  - {img['src'][:60]}... (alt: {img['alt'][:30]})")
 
 print(f"\nProduct Info:")
 print(f"  Name: {result['product_info']['name']}")
