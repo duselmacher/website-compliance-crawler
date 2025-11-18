@@ -1,0 +1,8 @@
+# HTTP Requests for Sitemap-Fetching
+requests>=2.31.0
+
+# Optional: For later features
+# pytest>=7.4.0  # Testing
+# black>=23.0.0  # Code Formatting
+# pylint>=2.17.0  # Linting
+# mypy>=1.5.0  # Type Checking
