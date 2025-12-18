@@ -2,76 +2,103 @@
 
 ## Grundlegende Nutzung
 
-### Single Domain Scan
+### Nur URLs sammeln (schnell)
 ```bash
-python src/crawler.py --domain probiom.com
+python crawler.py --domain probiom.com
+```
+Gibt eine Übersicht aller URLs in der Sitemap, kategorisiert nach Typ.
+
+### Mit Content-Extraktion
+```bash
+python crawler.py --domain probiom.com --extract-content
+```
+Crawlt alle URLs und extrahiert:
+- Titel und Meta-Description
+- Headings (H1, H2, H3)
+- Volltext
+- Bilder mit Alt-Text
+- Produkt-Schema-Daten (wenn vorhanden)
+
+## Filter-Optionen
+
+### Nur bestimmte Kategorien (inklusiv)
+```bash
+# Nur Produkte
+python crawler.py --domain probiom.com --extract-content --categories products
+
+# Produkte und Pages
+python crawler.py --domain probiom.com --extract-content --categories products,pages
 ```
 
-### Mit spezifischem Compliance-Framework
+### Kategorien ausschließen (exklusiv)
 ```bash
-python src/crawler.py --domain probiom.com --framework eu_health_claims
+# Alles ausser Blogs
+python crawler.py --domain probiom.com --extract-content --exclude blogs
+
+# Alles ausser Blogs und Collections
+python crawler.py --domain probiom.com --extract-content --exclude blogs,collections
 ```
 
-### Output-Format wählen
+**Verfügbare Kategorien:** `products`, `blogs`, `pages`, `collections`, `other`
+
+### URL-Limit
 ```bash
-python src/crawler.py --domain probiom.com --format json
-python src/crawler.py --domain probiom.com --format excel
+python crawler.py --domain probiom.com --extract-content --max-urls 100
 ```
 
-## Erweiterte Optionen
-
-### Verschiedene Sprachen ausschließen
+### Eigenes Output-Verzeichnis
 ```bash
-python src/crawler.py --domain probiom.com --exclude-language /en/
-```
-
-### Maximale Seitenanzahl limitieren
-```bash
-python src/crawler.py --domain probiom.com --max-pages 50
-```
-
-### Verbose Logging
-```bash
-python src/crawler.py --domain probiom.com --verbose
+python crawler.py --domain probiom.com --output /pfad/zum/ordner
 ```
 
 ## Output-Struktur
 
-Alle Scans werden nach `output/` geschrieben (→ Dropbox):
 ```
 output/
-└── probiom.com_2025-11-17_15-30/
-    ├── urls.json              # Alle gefundenen URLs
-    ├── compliance_report.json # Gefundene Verstöße
-    ├── compliance_report.xlsx # Excel-Report
-    └── summary.txt            # Zusammenfassung
+├── probiom.com_20251218_143022_content.json   # Mit --extract-content
+└── (weitere Crawl-Ergebnisse)
 ```
 
-## Beispiel-Workflow
-
-1. **Scan durchführen:**
-```bash
-   python src/crawler.py --domain probiom.com --framework eu_health_claims
+### JSON-Struktur (Content)
+```json
+{
+  "domain": "probiom.com",
+  "crawled_at": "2025-12-18T14:30:22",
+  "total_urls": 50,
+  "successful": 48,
+  "failed": 2,
+  "content": [
+    {
+      "url": "https://probiom.com/products/example",
+      "title": "Produkt-Titel",
+      "meta_description": "...",
+      "headings": {"h1": [...], "h2": [...], "h3": [...]},
+      "full_text": "...",
+      "images": [...],
+      "product_info": {...},
+      "error": null
+    }
+  ]
+}
 ```
 
-2. **Reports in Dropbox finden:**
-   - Öffne `~/Water&Salt Dropbox/.../Website-Crawler-Output/`
-   - Neuester Ordner enthält die Results
+## Workflow mit Clara
 
-3. **In Claude Projects hochladen:**
-   - Upload `compliance_report.json`
-   - Sag: "Clara, analysiere diesen Report"
+1. **Crawl durchführen:**
+   ```bash
+   python crawler.py --domain probiom.com --extract-content --exclude blogs
+   ```
 
-## Clara & Mara Integration
+2. **JSON finden:**
+   - Output liegt in `output/` (→ Dropbox-Sync)
 
-Dieser Crawler ist der **Daten-Sammler** für Clara & Mara in Claude Projects:
+3. **Zu Clara hochladen:**
+   - Öffne Claude Projects
+   - Upload die JSON-Datei
+   - "Clara, analysiere diese Website auf Health Claims Verstöße"
 
-- **Workflow:**
-  1. Crawler sammelt URLs + Content
-  2. Du uploadest Reports → Claude Projects
-  3. Clara/Mara analysieren Compliance/Marketing
+## Hinweise
 
-- **Warum getrennt?**
-  - Clara/Mara existieren nur in Claude Projects (mit Memory)
-  - Crawler braucht lokale Netzwerk-Rechte
-  - Best of both worlds: Lokales Crawling + Cloud-Analyse
+- Homepage wird IMMER mitgecrawlt (auch bei Filtern)
+- 0.5s Pause zwischen Requests (Rate-Limiting)
+- Timeout: 10s für Sitemaps, 15s für Content

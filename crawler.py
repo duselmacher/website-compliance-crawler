@@ -74,7 +74,8 @@ def crawl_urls_only(domain: str, output_dir: Path) -> Dict:
     return urls_data
 
 
-def crawl_with_content(domain: str, output_dir: Path, max_urls: int = None, categories: List[str] = None) -> tuple:
+def crawl_with_content(domain: str, output_dir: Path, max_urls: int = None,
+                       categories: List[str] = None, exclude: List[str] = None) -> tuple:
     """
     Crawlt Sitemap UND extrahiert Content von allen URLs.
 
@@ -82,7 +83,8 @@ def crawl_with_content(domain: str, output_dir: Path, max_urls: int = None, cate
         domain: Die Domain zum Crawlen
         output_dir: Output-Verzeichnis
         max_urls: Maximale Anzahl URLs zum Extrahieren (None = alle)
-        categories: Liste von Kategorien zum Filtern (None = alle)
+        categories: Liste von Kategorien zum Filtern (None = alle) - inklusiv
+        exclude: Liste von Kategorien zum Ausschließen (None = keine) - exklusiv
 
     Returns:
         Tuple von (urls_data, content_data)
@@ -97,15 +99,24 @@ def crawl_with_content(domain: str, output_dir: Path, max_urls: int = None, cate
 
     # 3. Sammle URLs basierend auf Kategorien
     if categories:
-        # Nur ausgewählte Kategorien
-        print(f"\n🔍 Filtering categories: {', '.join(categories)}")
+        # Nur ausgewählte Kategorien (inklusiv)
+        print(f"\n🔍 Including categories: {', '.join(categories)}")
         for category in categories:
             if category in urls_data['urls']:
                 urls = urls_data['urls'][category]
                 all_urls.extend(urls)
-                print(f"  {category}: {len(urls)} URLs")
+                print(f"  ✅ {category}: {len(urls)} URLs")
             else:
                 print(f"  ⚠️  Category '{category}' not found")
+    elif exclude:
+        # Alle AUSSER ausgewählte Kategorien (exklusiv)
+        print(f"\n🔍 Excluding categories: {', '.join(exclude)}")
+        for category, urls in urls_data['urls'].items():
+            if category not in exclude:
+                all_urls.extend(urls)
+                print(f"  ✅ {category}: {len(urls)} URLs")
+            else:
+                print(f"  ❌ {category}: {len(urls)} URLs (excluded)")
     else:
         # Alle Kategorien
         for category, urls in urls_data['urls'].items():
@@ -177,17 +188,20 @@ Examples:
   # Nur URLs crawlen (schnell)
   %(prog)s --domain probiom.com
 
-  # URLs + Content crawlen (langsam, für Compliance-Analyse)
+  # URLs + Content crawlen
   %(prog)s --domain probiom.com --extract-content
 
-  # Nur Produkte mit Content extrahieren
+  # Nur Produkte crawlen
   %(prog)s --domain probiom.com --extract-content --categories products
 
-  # Mehrere Kategorien
-  %(prog)s --domain probiom.com --extract-content --categories products,pages
+  # Alles AUSSER Blogs crawlen
+  %(prog)s --domain probiom.com --extract-content --exclude blogs
 
-  # Nur erste 50 Blog-Posts
-  %(prog)s --domain probiom.com --extract-content --categories blogs --max-urls 50
+  # Alles ausser Blogs und Collections
+  %(prog)s --domain probiom.com --extract-content --exclude blogs,collections
+
+  # Mit URL-Limit
+  %(prog)s --domain probiom.com --extract-content --max-urls 100
         """
     )
 
@@ -212,7 +226,13 @@ Examples:
     parser.add_argument(
         '--categories',
         type=str,
-        help='Komma-separierte Liste von Kategorien (products,blogs,pages,collections,other)'
+        help='Nur diese Kategorien crawlen (products,blogs,pages,collections,other)'
+    )
+
+    parser.add_argument(
+        '--exclude',
+        type=str,
+        help='Diese Kategorien AUSSCHLIESSEN (z.B. --exclude blogs)'
     )
 
     parser.add_argument(
@@ -233,14 +253,33 @@ Examples:
         print("❌ --categories requires --extract-content")
         return 1
 
-    # Parse categories
+    if args.exclude and not args.extract_content:
+        print("❌ --exclude requires --extract-content")
+        return 1
+
+    if args.categories and args.exclude:
+        print("❌ --categories und --exclude können nicht gleichzeitig verwendet werden")
+        return 1
+
+    valid_categories = {'products', 'blogs', 'pages', 'collections', 'other'}
+
+    # Parse categories (inklusiv)
     categories = None
     if args.categories:
         categories = [cat.strip() for cat in args.categories.split(',')]
-        valid_categories = {'products', 'blogs', 'pages', 'collections', 'other'}
         invalid = [cat for cat in categories if cat not in valid_categories]
         if invalid:
             print(f"❌ Invalid categories: {', '.join(invalid)}")
+            print(f"   Valid: {', '.join(valid_categories)}")
+            return 1
+
+    # Parse exclude (exklusiv)
+    exclude = None
+    if args.exclude:
+        exclude = [cat.strip() for cat in args.exclude.split(',')]
+        invalid = [cat for cat in exclude if cat not in valid_categories]
+        if invalid:
+            print(f"❌ Invalid exclude categories: {', '.join(invalid)}")
             print(f"   Valid: {', '.join(valid_categories)}")
             return 1
 
@@ -251,7 +290,7 @@ Examples:
     try:
         if args.extract_content:
             # Full Crawl mit Content
-            crawl_with_content(args.domain, args.output, args.max_urls, categories)
+            crawl_with_content(args.domain, args.output, args.max_urls, categories, exclude)
         else:
             # Nur URLs
             crawl_urls_only(args.domain, args.output)
