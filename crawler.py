@@ -90,9 +90,12 @@ def crawl_with_content(domain: str, output_dir: Path, max_urls: int = None, cate
     # 1. Crawl URLs
     urls_data = crawl_urls_only(domain, output_dir)
 
-    # 2. Sammle URLs basierend auf Kategorien
-    all_urls = []
+    # 2. ALWAYS include homepage first
+    homepage_url = f"https://{domain}"
+    all_urls = [homepage_url]
+    print(f"\n✅ Including homepage: {homepage_url}")
 
+    # 3. Sammle URLs basierend auf Kategorien
     if categories:
         # Nur ausgewählte Kategorien
         print(f"\n🔍 Filtering categories: {', '.join(categories)}")
@@ -108,12 +111,17 @@ def crawl_with_content(domain: str, output_dir: Path, max_urls: int = None, cate
         for category, urls in urls_data['urls'].items():
             all_urls.extend(urls)
 
-    # Limitiere URLs wenn gewünscht
+    # Limitiere URLs wenn gewünscht (aber behalte immer die Homepage)
     if max_urls and len(all_urls) > max_urls:
         print(f"\n⚠️  Limiting to first {max_urls} URLs (total: {len(all_urls)})")
-        all_urls = all_urls[:max_urls]
+        # Keep homepage (first URL) and limit the rest
+        all_urls = [all_urls[0]] + all_urls[1:max_urls]
 
-    # 3. Extrahiere Content
+    # Show final statistics
+    filtered_count = len(all_urls) - 1  # Minus homepage
+    print(f"\n📊 Total to crawl: {len(all_urls)} URLs (1 homepage + {filtered_count} filtered)")
+
+    # 4. Extrahiere Content
     print_header(f"EXTRACTING CONTENT: {len(all_urls)} URLs")
 
     content_results = []
