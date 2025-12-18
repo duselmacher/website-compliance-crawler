@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S venv/bin/python3
 """
 Website Compliance Crawler - CLI Tool
 
@@ -15,8 +15,44 @@ from typing import Dict, List
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
+import requests
 from sitemap_parser import crawl_all_sitemaps
 from content_extractor import extract_multiple_urls
+
+
+# Standard Policy-URLs (Shopify und andere Shops)
+STANDARD_POLICY_PATHS = [
+    '/policies/legal-notice',      # Impressum
+    '/policies/privacy-policy',    # Datenschutz
+    '/policies/terms-of-service',  # AGB
+    '/policies/refund-policy',     # Widerruf
+    '/policies/shipping-policy',   # Versand
+]
+
+
+def discover_policy_urls(domain: str) -> List[str]:
+    """
+    Prüft Standard-Policy-URLs die oft nicht in der Sitemap sind.
+
+    Args:
+        domain: Die Domain zum Prüfen
+
+    Returns:
+        Liste von existierenden Policy-URLs
+    """
+    found_urls = []
+    base_url = f"https://{domain}"
+
+    for path in STANDARD_POLICY_PATHS:
+        url = f"{base_url}{path}"
+        try:
+            response = requests.head(url, timeout=5, allow_redirects=True)
+            if response.status_code == 200:
+                found_urls.append(url)
+        except:
+            pass  # URL existiert nicht oder Fehler
+
+    return found_urls
 
 
 def clean_domain_for_filename(domain: str) -> str:
@@ -68,6 +104,16 @@ def crawl_urls_only(domain: str, output_dir: Path) -> Dict:
 
     print("⏳ Fetching sitemap...\n")
     urls_data = crawl_all_sitemaps(domain)
+
+    # Policy-URLs entdecken (oft nicht in Sitemap)
+    print("\n🔍 Checking for policy pages...")
+    policy_urls = discover_policy_urls(domain)
+    if policy_urls:
+        urls_data['urls']['policies'] = policy_urls
+        urls_data['total_urls'] += len(policy_urls)
+        print(f"   Found {len(policy_urls)} policy pages (not in sitemap)")
+    else:
+        print("   No standard policy pages found")
 
     print_stats(urls_data)
 
@@ -226,7 +272,7 @@ Examples:
     parser.add_argument(
         '--categories',
         type=str,
-        help='Nur diese Kategorien crawlen (products,blogs,pages,collections,other)'
+        help='Nur diese Kategorien crawlen (products,blogs,pages,collections,policies,other)'
     )
 
     parser.add_argument(
@@ -261,7 +307,7 @@ Examples:
         print("❌ --categories und --exclude können nicht gleichzeitig verwendet werden")
         return 1
 
-    valid_categories = {'products', 'blogs', 'pages', 'collections', 'other'}
+    valid_categories = {'products', 'blogs', 'pages', 'collections', 'policies', 'other'}
 
     # Parse categories (inklusiv)
     categories = None
