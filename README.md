@@ -26,6 +26,16 @@ pip install -r requirements.txt
 ## Nutzung
 
 ```bash
+# Virtual Environment aktivieren
+source venv/bin/activate
+
+# Virtual Environment verlassen (wenn fertig)
+deactivate
+```
+
+### Beispiele
+
+```bash
 source venv/bin/activate
 
 # Nur URLs sammeln (schnell)
