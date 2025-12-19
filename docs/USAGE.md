@@ -39,7 +39,9 @@ python crawler.py --domain probiom.com --extract-content --exclude blogs
 python crawler.py --domain probiom.com --extract-content --exclude blogs,collections
 ```
 
-**Verfügbare Kategorien:** `products`, `blogs`, `pages`, `collections`, `other`
+**Verfügbare Kategorien:** `products`, `blogs`, `pages`, `collections`, `policies`, `other`
+
+> **Hinweis:** `policies` wird automatisch entdeckt (Shopify-Seiten wie Impressum, Datenschutz, AGB sind oft nicht in der Sitemap).
 
 ### URL-Limit
 ```bash

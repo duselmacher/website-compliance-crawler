@@ -7,7 +7,8 @@ Daten-Sammler für Clara (Compliance-Analyse in Claude Projects).
 Der Crawler sammelt strukturierte Daten von Websites:
 - Sitemap-basiertes URL-Discovery
 - Content-Extraktion (Titel, Headings, Meta, Bilder, Produktdaten)
-- Kategorisierung (products, blogs, pages, collections, other)
+- Kategorisierung (products, blogs, pages, collections, policies, other)
+- Auto-Discovery von Policy-Seiten (Impressum, Datenschutz, AGB, etc.)
 - JSON-Export für Clara
 
 **Wichtig:** Der Crawler prüft KEINE Compliance. Er sammelt nur Daten. Clara macht die Analyse.
