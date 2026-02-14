@@ -40,10 +40,13 @@ src/
 ```bash
 source venv/bin/activate
 
-# Schnelltest: nur URLs
+# Unit Tests
+pytest -q
+
+# Manueller Schnelltest: nur URLs
 python crawler.py --domain probiom.com
 
-# Volltest: mit Content
+# Manueller Volltest: mit Content
 python crawler.py --domain probiom.com --extract-content --max-urls 5
 ```
 
@@ -54,3 +57,4 @@ pip install -r requirements.txt
 ```
 
 Aktuell nur: `requests`, `beautifulsoup4`
+Aktuell für Tests zusätzlich: `pytest`
