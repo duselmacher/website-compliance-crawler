@@ -41,6 +41,9 @@ source venv/bin/activate
 # Nur URLs sammeln (schnell)
 python crawler.py --domain probiom.com
 
+# Domain mit Schema geht auch
+python crawler.py --domain https://probiom.com
+
 # Mit Content-Extraktion
 python crawler.py --domain probiom.com --extract-content
 
@@ -56,7 +59,9 @@ python crawler.py --domain probiom.com --extract-content --max-urls 100
 
 ## Output
 
-JSON-Dateien werden nach `output/` geschrieben (→ Dropbox-Sync).
+JSON-Dateien werden nach `output/` geschrieben (→ Dropbox-Sync):
+- `*_urls.json` bei jedem Crawl
+- `*_content.json` zusätzlich bei `--extract-content`
 
 ## Workflow mit Clara
 

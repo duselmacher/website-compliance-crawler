@@ -7,6 +7,14 @@
 python crawler.py --domain probiom.com
 ```
 Gibt eine Übersicht aller URLs in der Sitemap, kategorisiert nach Typ.
+Schreibt zusätzlich einen URL-Report als `*_urls.json` nach `output/`.
+
+### Domain-Format
+Beides wird akzeptiert:
+```bash
+python crawler.py --domain probiom.com
+python crawler.py --domain https://probiom.com
+```
 
 ### Mit Content-Extraktion
 ```bash
@@ -57,6 +65,7 @@ python crawler.py --domain probiom.com --output /pfad/zum/ordner
 
 ```
 output/
+├── probiom.com_20251218_143022_urls.json      # Immer
 ├── probiom.com_20251218_143022_content.json   # Mit --extract-content
 └── (weitere Crawl-Ergebnisse)
 ```

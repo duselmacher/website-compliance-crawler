@@ -31,9 +31,6 @@ website-compliance-crawler/
 ├── README.md             # Projekt-Übersicht
 ├── requirements.txt      # Python Dependencies
 ├── src/                  # Source Code
-├── config/               # Konfigurationsdateien
-│   └── *.yaml           # Compliance-Regeln pro Framework
-├── tests/                # Unit Tests
 ├── docs/                 # Dokumentation
 └── output/               # Symlink → Dropbox (nicht in Git!)
 ```

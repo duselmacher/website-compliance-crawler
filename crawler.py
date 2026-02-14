@@ -11,13 +11,14 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
+from urllib.parse import urlparse
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
-import requests
 from sitemap_parser import crawl_all_sitemaps
 from content_extractor import extract_multiple_urls
+import requests
 
 
 # Standard Policy-URLs (Shopify und andere Shops)
@@ -49,10 +50,26 @@ def discover_policy_urls(domain: str) -> List[str]:
             response = requests.head(url, timeout=5, allow_redirects=True)
             if response.status_code == 200:
                 found_urls.append(url)
-        except:
+        except requests.RequestException:
             pass  # URL existiert nicht oder Fehler
 
     return found_urls
+
+
+def normalize_domain(domain: str) -> str:
+    """Normalisiert Domain-Eingaben (mit/ohne Schema) zu einem Hostnamen."""
+    raw = domain.strip()
+    if not raw:
+        raise ValueError("Domain darf nicht leer sein")
+
+    parsed = urlparse(raw if "://" in raw else f"https://{raw}")
+    host = parsed.netloc or parsed.path
+    host = host.strip().strip("/").lower()
+
+    if not host:
+        raise ValueError(f"Ungültige Domain: {domain}")
+
+    return host
 
 
 def clean_domain_for_filename(domain: str) -> str:
@@ -104,18 +121,36 @@ def crawl_urls_only(domain: str, output_dir: Path) -> Dict:
 
     print("⏳ Fetching sitemap...\n")
     urls_data = crawl_all_sitemaps(domain)
+    urls_data['urls'].setdefault('policies', [])
+
+    # Bestehende URLs global sammeln, um doppelte Policy-URLs zu vermeiden
+    existing_urls = set()
+    for category_urls in urls_data['urls'].values():
+        existing_urls.update(category_urls)
 
     # Policy-URLs entdecken (oft nicht in Sitemap)
     print("\n🔍 Checking for policy pages...")
     policy_urls = discover_policy_urls(domain)
-    if policy_urls:
-        urls_data['urls']['policies'] = policy_urls
-        urls_data['total_urls'] += len(policy_urls)
-        print(f"   Found {len(policy_urls)} policy pages (not in sitemap)")
+    new_policy_urls = [url for url in policy_urls if url not in existing_urls]
+    if new_policy_urls:
+        urls_data['urls']['policies'].extend(new_policy_urls)
+        urls_data['total_urls'] += len(new_policy_urls)
+        print(f"   Found {len(new_policy_urls)} policy pages (not in sitemap)")
     else:
         print("   No standard policy pages found")
 
     print_stats(urls_data)
+
+    # URL-Report immer speichern (auch ohne Content-Extraktion)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    domain_clean = clean_domain_for_filename(domain)
+    urls_file = output_dir / f"{domain_clean}_{timestamp}_urls.json"
+    urls_output = {
+        **urls_data,
+        'crawled_at': datetime.now().isoformat(),
+    }
+    save_json(urls_output, urls_file)
+    print(f"\n💾 URL report saved to: {urls_file}")
 
     return urls_data
 
@@ -181,20 +216,16 @@ def crawl_with_content(domain: str, output_dir: Path, max_urls: int = None,
     # 4. Extrahiere Content
     print_header(f"EXTRACTING CONTENT: {len(all_urls)} URLs")
 
-    content_results = []
-    total = len(all_urls)
+    # Dedupliziere URLs bei gleichbleibender Reihenfolge
+    unique_urls = []
+    seen = set()
+    for url in all_urls:
+        if url not in seen:
+            seen.add(url)
+            unique_urls.append(url)
+    all_urls = unique_urls
 
-    for i, url in enumerate(all_urls, 1):
-        print(f"[{i}/{total}] Extracting: {url}")
-
-        # Import hier um Fortschritt zu zeigen
-        from content_extractor import extract_content
-        content = extract_content(url)
-        content_results.append(content)
-
-        # Kleine Pause
-        import time
-        time.sleep(0.5)
+    content_results = extract_multiple_urls(all_urls)
 
     # 4. Statistiken
     successful = sum(1 for r in content_results if not r['error'])
@@ -290,6 +321,12 @@ Examples:
 
     args = parser.parse_args()
 
+    try:
+        domain = normalize_domain(args.domain)
+    except ValueError as e:
+        print(f"❌ {e}")
+        return 1
+
     # Validierung
     if args.max_urls and not args.extract_content:
         print("❌ --max-urls requires --extract-content")
@@ -336,10 +373,10 @@ Examples:
     try:
         if args.extract_content:
             # Full Crawl mit Content
-            crawl_with_content(args.domain, args.output, args.max_urls, categories, exclude)
+            crawl_with_content(domain, args.output, args.max_urls, categories, exclude)
         else:
             # Nur URLs
-            crawl_urls_only(args.domain, args.output)
+            crawl_urls_only(domain, args.output)
 
         print_header("✅ CRAWLING COMPLETED")
         return 0

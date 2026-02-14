@@ -6,8 +6,8 @@ Extrahiert strukturierte Inhalte von Webseiten für spätere Compliance-Analyse.
 
 import requests
 from bs4 import BeautifulSoup
-from typing import Dict, List, Optional
-from urllib.parse import urljoin, urlparse
+from typing import Dict, List
+from urllib.parse import urljoin
 import re
 
 

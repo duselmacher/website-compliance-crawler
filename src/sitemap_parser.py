@@ -11,8 +11,8 @@ Unterstützt:
 
 import requests
 import xml.etree.ElementTree as ET
-from urllib.parse import urljoin, urlparse
-from typing import List, Dict, Set, Optional
+from urllib.parse import urlparse
+from typing import Any, List, Dict, Set
 import time
 
 
@@ -224,7 +224,7 @@ def find_sitemap_url(domain: str) -> str:
     raise requests.RequestException(f"Keine Sitemap gefunden für {domain}")
 
 
-def crawl_all_sitemaps(domain: str) -> Dict[str, any]:
+def crawl_all_sitemaps(domain: str) -> Dict[str, Any]:
     """
     Crawlt alle Sitemaps einer Domain und extrahiert alle URLs strukturiert.
 
@@ -270,6 +270,7 @@ def crawl_all_sitemaps(domain: str) -> Dict[str, any]:
             'blogs': [],
             'pages': [],
             'collections': [],
+            'policies': [],
             'other': []
         },
         'errors': []
