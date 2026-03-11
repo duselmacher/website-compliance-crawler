@@ -27,6 +27,26 @@ Crawlt alle URLs und extrahiert:
 - Bilder mit Alt-Text
 - Produkt-Schema-Daten (wenn vorhanden)
 
+## Shop-Type
+
+Policy-Seiten (Impressum, Datenschutz, AGB) sind oft nicht in der Sitemap. Der Crawler prüft bekannte Pfade per HTTP HEAD Request. Mit `--shop-type` steuerst du, welche Pfade geprüft werden:
+
+```bash
+# Shopify-Shop (5 Pfade unter /policies/)
+python crawler.py --domain probiom.com --shop-type shopify
+
+# WooCommerce-Shop (6 Pfade wie /privacy-policy, /impressum, /agb)
+python crawler.py --domain example.com --shop-type woocommerce
+
+# Generisch (11 Pfade, breiter Fächer)
+python crawler.py --domain example.com --shop-type generic
+
+# Ohne Angabe: alle bekannten Pfade probieren (Standard)
+python crawler.py --domain example.com
+```
+
+**Empfehlung:** Wenn du den Shop-Typ kennst, gib ihn an – das spart unnötige HTTP-Requests.
+
 ## Filter-Optionen
 
 ### Nur bestimmte Kategorien (inklusiv)
@@ -49,7 +69,7 @@ python crawler.py --domain probiom.com --extract-content --exclude blogs,collect
 
 **Verfügbare Kategorien:** `products`, `blogs`, `pages`, `collections`, `policies`, `other`
 
-> **Hinweis:** `policies` wird automatisch entdeckt (Shopify-Seiten wie Impressum, Datenschutz, AGB sind oft nicht in der Sitemap).
+> **Hinweis:** `--categories` und `--exclude` können nicht gleichzeitig verwendet werden.
 
 ### URL-Limit
 ```bash
@@ -71,6 +91,9 @@ output/
 ```
 
 ### JSON-Struktur (Content)
+
+Compliance-relevante Felder (Titel, Meta-Description, Headings) stehen **vor** dem Fließtext:
+
 ```json
 {
   "domain": "probiom.com",
@@ -82,11 +105,11 @@ output/
     {
       "url": "https://probiom.com/products/example",
       "title": "Produkt-Titel",
-      "meta_description": "...",
-      "headings": {"h1": [...], "h2": [...], "h3": [...]},
-      "full_text": "...",
-      "images": [...],
-      "product_info": {...},
+      "meta_description": "Kurzbeschreibung für Google",
+      "headings": {"h1": ["..."], "h2": ["..."], "h3": ["..."]},
+      "full_text": "Kompletter sichtbarer Text der Seite...",
+      "images": [{"src": "...", "alt": "...", "title": "..."}],
+      "product_info": {"name": "...", "description": "...", "price": "..."},
       "error": null
     }
   ]
@@ -97,7 +120,7 @@ output/
 
 1. **Crawl durchführen:**
    ```bash
-   python crawler.py --domain probiom.com --extract-content --exclude blogs
+   python crawler.py --domain probiom.com --extract-content --shop-type shopify --exclude blogs
    ```
 
 2. **JSON finden:**
@@ -113,3 +136,4 @@ output/
 - Homepage wird IMMER mitgecrawlt (auch bei Filtern)
 - 0.5s Pause zwischen Requests (Rate-Limiting)
 - Timeout: 10s für Sitemaps, 15s für Content
+- `--max-urls`, `--categories` und `--exclude` erfordern `--extract-content`
