@@ -10,6 +10,8 @@
 - Integration Tests: End-to-End Tests für crawl_urls_only und crawl_with_content
 - sys.path.insert bereinigt: project root statt src/, konsistente `from src.*` Imports
 - Inline `import time` nach oben verschoben für sauberes Mocking
+- README.md komplett überarbeitet: alle CLI-Optionen, Shop-Type-Erklärung, JSON-Struktur
+- docs/USAGE.md synchronisiert
 
 ## 2025-02-14
 - Tests für Domain-Normalisierung, URL-Kategorisierung und CLI-Validierung hinzugefügt
