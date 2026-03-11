@@ -4,6 +4,9 @@ requests>=2.31.0
 # HTML Parsing for Content Extraction
 beautifulsoup4>=4.12.0
 
+# Web Interface
+flask>=3.0.0
+
 # Testing
 pytest>=7.4.0
 

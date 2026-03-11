@@ -1,18 +1,20 @@
 # Website Compliance Crawler
 
-CLI-Tool das Websites crawlt und strukturierte JSON-Daten für Clara (Compliance-Analyse in Claude Projects) sammelt. Für Water & Salt AG.
+CLI-Tool und Web-Interface das Websites crawlt und strukturierte JSON-Daten für Clara (Compliance-Analyse in Claude Projects) sammelt. Für Water & Salt AG.
 
 ## Tech-Stack
 
 - **Sprache:** Python 3.14 (venv)
-- **Dependencies:** requests, beautifulsoup4, pytest
+- **Dependencies:** requests, beautifulsoup4, flask, pytest, ruff
 - **Output:** JSON nach `output/` (Symlink → Dropbox)
-- **Kein Deployment** – lokales CLI-Tool, wird direkt auf macOS ausgeführt
+- **Kein Deployment** – lokales Tool, wird direkt auf macOS ausgeführt
 
 ## Projektstruktur
 
 ```
+app.py                  # Web-Interface (Flask, localhost:8080)
 crawler.py              # CLI Entry Point (argparse)
+templates/index.html    # Web-UI (Single Page, Tailwind CSS)
 src/
 ├── sitemap_parser.py   # Sitemap-Discovery & URL-Kategorisierung
 └── content_extractor.py # HTML-Parsing & Content-Extraktion
@@ -29,28 +31,33 @@ setup.sh                # venv + pip install
 ./setup.sh
 # oder: python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt
 
+# Web-Interface starten (öffnet Browser automatisch)
+python app.py
+
+# CLI: Nur URLs crawlen
+python crawler.py --domain example.com
+
+# CLI: Mit Content-Extraktion
+python crawler.py --domain example.com --extract-content
+
+# CLI: Kategorien filtern/ausschließen
+python crawler.py --domain example.com --extract-content --categories products
+python crawler.py --domain example.com --extract-content --exclude blogs,collections
+
 # Tests
 source venv/bin/activate && pytest -q
 
 # Linting
-source venv/bin/activate && ruff check crawler.py src/ tests/
-
-# Nur URLs crawlen
-python crawler.py --domain example.com
-
-# Mit Content-Extraktion
-python crawler.py --domain example.com --extract-content
-
-# Kategorien filtern/ausschließen
-python crawler.py --domain example.com --extract-content --categories products
-python crawler.py --domain example.com --extract-content --exclude blogs,collections
+source venv/bin/activate && ruff check crawler.py app.py src/ tests/
 ```
 
 ## Architektur
 
 - Sitemap-basiertes URL-Discovery mit automatischer Kategorisierung (products, blogs, pages, collections, policies, other)
-- Auto-Discovery von Shopify Policy-URLs die nicht in Sitemaps sind
+- Auto-Discovery von Policy-URLs für Shopify, WooCommerce und generische Shops (`--shop-type`)
 - Content-Extraktion: Titel, Meta, Headings, Volltext, Bilder, Produkt-Schema
+- JSON-Feld-Reihenfolge: Compliance-relevante Felder (headings, meta_description) vor full_text
+- Web-Interface: Flask + SSE für Live-Fortschritt, Browser öffnet sich automatisch
 - Output wird per Dropbox-Symlink zu Clara (Claude Projects) transportiert
 
 ## Dokumentation

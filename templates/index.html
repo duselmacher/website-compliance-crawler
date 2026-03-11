@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compliance Crawler</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0f1115;
+      --bg-panel: #181a20;
+      --bg-card: #1e2028;
+      --bg-input: #252830;
+      --bg-hover: #2a2d36;
+      --border: #2e313a;
+      --border-focus: #d4956a;
+      --text-primary: #e8e6e1;
+      --text-secondary: #8b8d95;
+      --text-muted: #5c5e66;
+      --accent: #d4956a;
+      --accent-hover: #e0a87d;
+      --accent-subtle: rgba(212, 149, 106, 0.12);
+      --accent-glow: rgba(212, 149, 106, 0.25);
+      --success: #6bcb77;
+      --error: #e06c6c;
+      --warning: #e0c36c;
+      --cat-products: #d4956a;
+      --cat-blogs: #6ba3d4;
+      --cat-pages: #8b6bd4;
+      --cat-collections: #6bd4a3;
+      --cat-policies: #d46b8b;
+      --cat-other: #8b8d95;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 320px;
+      min-width: 320px;
+      height: 100vh;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .sidebar-header {
+      padding: 28px 24px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent-subtle);
+      border: 1px solid rgba(212, 149, 106, 0.2);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .brand-text h1 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 20px;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+      color: var(--text-primary);
+    }
+
+    .brand-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .sidebar-form {
+      padding: 20px 24px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* ── Form Elements ── */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+
+    .field-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .field-input,
+    .field-select {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+
+    .field-input::placeholder { color: var(--text-muted); }
+    .field-input:focus,
+    .field-select:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px var(--accent-subtle);
+    }
+
+    .field-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%238b8d95' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+      cursor: pointer;
+    }
+
+    /* Toggle Switch */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      color: var(--text-primary);
+      font-weight: 400;
+    }
+
+    .toggle-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle input { opacity: 0; width: 0; height: 0; }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.25s, border-color 0.25s;
+    }
+
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      background: var(--text-secondary);
+      border-radius: 50%;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.25s;
+    }
+
+    .toggle input:checked + .toggle-track {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .toggle input:checked + .toggle-track::after {
+      transform: translateX(20px);
+      background: white;
+    }
+
+    /* Collapsible Content Options */
+    .content-options {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s;
+      opacity: 0;
+    }
+
+    .content-options.open {
+      max-height: 400px;
+      opacity: 1;
+    }
+
+    .content-options-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding-top: 4px;
+    }
+
+    /* Filter Mode Tabs */
+    .filter-tabs {
+      display: flex;
+      background: var(--bg-input);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .filter-tab {
+      flex: 1;
+      padding: 7px 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-align: center;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: 'DM Sans', sans-serif;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .filter-tab:hover { color: var(--text-secondary); }
+    .filter-tab.active {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    /* Category Pills */
+    .cat-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s, opacity 0.2s, margin 0.3s;
+      opacity: 0;
+      margin-top: 0;
+    }
+
+    .cat-grid.visible {
+      max-height: 120px;
+      opacity: 1;
+      margin-top: 8px;
+    }
+
+    .cat-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      user-select: none;
+    }
+
+    .cat-pill:hover { background: var(--bg-hover); }
+    .cat-pill.selected {
+      border-color: var(--accent);
+      background: var(--accent-subtle);
+    }
+
+    .cat-pill input { display: none; }
+
+    .cat-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .cat-pill span {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .cat-pill.selected span { color: var(--text-primary); }
+
+    /* CTA Button */
+    .sidebar-footer {
+      padding: 16px 24px 24px;
+      margin-top: auto;
+    }
+
+    .btn-crawl {
+      width: 100%;
+      padding: 13px 20px;
+      background: var(--accent);
+      color: var(--bg-deep);
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-crawl:hover:not(:disabled) {
+      background: var(--accent-hover);
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .btn-crawl:active:not(:disabled) { transform: scale(0.98); }
+
+    .btn-crawl:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-crawl .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(15, 17, 21, 0.3);
+      border-top-color: var(--bg-deep);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    .btn-crawl.loading .spinner { display: block; }
+    .btn-crawl.loading .btn-label { display: none; }
+    .btn-crawl.loading .btn-loading-label { display: inline; }
+    .btn-loading-label { display: none; }
+
+    .shortcut-hint {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    .shortcut-hint kbd {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10px;
+    }
+
+    /* ── Main Content ── */
+    .main {
+      flex: 1;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .main-header {
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 64px;
+    }
+
+    .main-title {
+      font-family: 'Instrument Serif', serif;
+      font-size: 16px;
+      font-weight: 400;
+      color: var(--text-secondary);
+    }
+
+    .main-title strong {
+      color: var(--text-primary);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+    }
+
+    .main-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .timer {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--text-muted);
+      min-width: 52px;
+      text-align: right;
+      display: none;
+    }
+
+    .timer.active { display: block; color: var(--accent); }
+
+    .status-badge {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: none;
+    }
+
+    .status-badge.running {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent-subtle);
+      color: var(--accent);
+    }
+
+    .status-badge.done {
+      display: block;
+      background: rgba(107, 203, 119, 0.12);
+      color: var(--success);
+    }
+
+    .status-badge.error {
+      display: block;
+      background: rgba(224, 108, 108, 0.12);
+      color: var(--error);
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .main-body {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    /* ── Empty State ── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 48px;
+      text-align: center;
+    }
+
+    .empty-icon {
+      width: 80px;
+      height: 80px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin-bottom: 20px;
+    }
+
+    .empty-state h2 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      color: var(--text-muted);
+      font-size: 14px;
+      max-width: 320px;
+      line-height: 1.6;
+    }
+
+    /* ── Log Area ── */
+    .log-section {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .log-section.active { display: flex; }
+
+    .stats-bar {
+      display: flex;
+      gap: 1px;
+      background: var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stat-item {
+      flex: 1;
+      padding: 14px 20px;
+      background: var(--bg-panel);
+      text-align: center;
+    }
+
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--text-primary);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .log-output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .log-line { padding: 1px 0; }
+    .log-line.log-info { color: var(--text-secondary); }
+    .log-line.log-success { color: var(--success); }
+    .log-line.log-error { color: var(--error); }
+    .log-line.log-header {
+      color: var(--accent);
+      font-weight: 500;
+      padding-top: 8px;
+    }
+
+    /* ── Results ── */
+    .results-section {
+      display: none;
+      padding: 32px;
+    }
+
+    .results-section.active { display: block; }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .result-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+    }
+
+    .result-card-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+      font-weight: 500;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .result-card-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .result-card.total .result-card-value { color: var(--text-primary); }
+    .result-card.success .result-card-value { color: var(--success); }
+    .result-card.failed .result-card-value { color: var(--error); }
+    .result-card.time .result-card-value {
+      color: var(--accent);
+      font-size: 22px;
+    }
+
+    .category-breakdown {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .category-breakdown h3 {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+    }
+
+    .cat-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .cat-bar-label {
+      width: 90px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .cat-bar-track {
+      flex: 1;
+      height: 8px;
+      background: var(--bg-input);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .cat-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 0;
+    }
+
+    .cat-bar-count {
+      width: 40px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--accent);
+      color: var(--bg-deep);
+      border: none;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-download:hover { background: var(--accent-hover); }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--bg-input);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--text-muted);
+      color: var(--text-primary);
+    }
+
+    .btn-download.copied {
+      background: var(--success);
+    }
+
+    .version-tag {
+      position: fixed;
+      bottom: 12px;
+      right: 16px;
+      font-size: 10px;
+      color: var(--text-muted);
+      opacity: 0.5;
+    }
+
+    /* ── Animations ── */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in {
+      animation: fadeInUp 0.4s ease-out forwards;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4956a" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/><path d="M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+        </div>
+        <div class="brand-text">
+          <h1>Compliance Crawler</h1>
+          <div class="brand-sub">Daten-Sammler f&uuml;r Clara</div>
+        </div>
+      </div>
+    </div>
+
+    <form class="sidebar-form" id="crawlForm" autocomplete="off">
+      <div class="field">
+        <label class="field-label" for="domain">Domain</label>
+        <input class="field-input" type="text" id="domain" name="domain" placeholder="z.B. probiom.com" required autofocus>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="shopType">Shop-System</label>
+        <select class="field-select" id="shopType" name="shop_type">
+          <option value="">Automatisch (alle Pfade)</option>
+          <option value="shopify">Shopify</option>
+          <option value="woocommerce">WooCommerce</option>
+          <option value="generic">Generisch</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Content extrahieren</div>
+            <div class="toggle-hint">Titel, Headings, Meta, Volltext</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="extractContent" name="extract_content">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="content-options" id="contentOptions">
+          <div class="content-options-inner">
+            <div class="field">
+              <label class="field-label">Kategorien</label>
+              <div class="filter-tabs" id="filterTabs">
+                <button type="button" class="filter-tab active" data-mode="all">Alle</button>
+                <button type="button" class="filter-tab" data-mode="include">Auswahl</button>
+                <button type="button" class="filter-tab" data-mode="exclude">Ausschl.</button>
+              </div>
+              <div class="cat-grid" id="catGrid">
+                <label class="cat-pill" data-cat="products">
+                  <input type="checkbox" name="cat" value="products">
+                  <span class="cat-dot" style="background:var(--cat-products)"></span>
+                  <span>Products</span>
+                </label>
+                <label class="cat-pill" data-cat="blogs">
+                  <input type="checkbox" name="cat" value="blogs">
+                  <span class="cat-dot" style="background:var(--cat-blogs)"></span>
+                  <span>Blogs</span>
+                </label>
+                <label class="cat-pill" data-cat="pages">
+                  <input type="checkbox" name="cat" value="pages">
+                  <span class="cat-dot" style="background:var(--cat-pages)"></span>
+                  <span>Pages</span>
+                </label>
+                <label class="cat-pill" data-cat="collections">
+                  <input type="checkbox" name="cat" value="collections">
+                  <span class="cat-dot" style="background:var(--cat-collections)"></span>
+                  <span>Collections</span>
+                </label>
+                <label class="cat-pill" data-cat="policies">
+                  <input type="checkbox" name="cat" value="policies">
+                  <span class="cat-dot" style="background:var(--cat-policies)"></span>
+                  <span>Policies</span>
+                </label>
+                <label class="cat-pill" data-cat="other">
+                  <input type="checkbox" name="cat" value="other">
+                  <span class="cat-dot" style="background:var(--cat-other)"></span>
+                  <span>Other</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="maxUrls">Max. URLs (optional)</label>
+              <input class="field-input" type="number" id="maxUrls" name="max_urls" min="1" placeholder="Alle">
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <div class="sidebar-footer">
+      <button type="submit" form="crawlForm" class="btn-crawl" id="btnCrawl">
+        <span class="spinner"></span>
+        <span class="btn-label">Crawl starten</span>
+        <span class="btn-loading-label">Crawling&hellip;</span>
+      </button>
+      <div class="shortcut-hint"><kbd>&lceil;Cmd&rceil;</kbd> + <kbd>&crarr;</kbd></div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+    <div class="main-header">
+      <div class="main-title" id="mainTitle">
+        <span id="titleIdle">Bereit</span>
+        <span id="titleActive" style="display:none">Crawle <strong id="titleDomain"></strong></span>
+        <span id="titleDone" style="display:none">Ergebnis f&uuml;r <strong id="titleDoneDomain"></strong></span>
+      </div>
+      <div class="main-meta">
+        <div class="timer" id="timer">0:00</div>
+        <span class="status-badge" id="statusBadge">
+          <span class="pulse-dot"></span>
+          <span class="status-text">L&auml;uft</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="main-body">
+      <!-- Empty State -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.3" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        </div>
+        <h2>Bereit zum Crawlen</h2>
+        <p>Domain eingeben, Optionen w&auml;hlen und Crawl starten. Die Ergebnisse werden als JSON f&uuml;r Clara exportiert.</p>
+      </div>
+
+      <!-- Log View -->
+      <div class="log-section" id="logSection">
+        <div class="stats-bar" id="statsBar">
+          <div class="stat-item">
+            <div class="stat-value" id="statUrls">0</div>
+            <div class="stat-label">URLs</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="statExtracted">0</div>
+            <div class="stat-label">Extrahiert</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="statPolicies">0</div>
+            <div class="stat-label">Policies</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="statErrors">0</div>
+            <div class="stat-label">Fehler</div>
+          </div>
+        </div>
+        <div class="log-output" id="logOutput"></div>
+      </div>
+
+      <!-- Results View -->
+      <div class="results-section" id="resultsSection"></div>
+    </div>
+  </main>
+
+  <div class="version-tag">v1.0</div>
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+
+    // ── State ──
+    let filterMode = 'all';
+    let crawling = false;
+    let timerInterval = null;
+    let startTime = null;
+
+    // ── Toggle content options ──
+    $('#extractContent').addEventListener('change', (e) => {
+      const opts = $('#contentOptions');
+      if (e.target.checked) {
+        opts.classList.add('open');
+      } else {
+        opts.classList.remove('open');
+      }
+    });
+
+    // ── Filter tabs ──
+    function resetCatPills() {
+      $$('.cat-pill input').forEach(cb => {
+        cb.checked = false;
+        cb.closest('.cat-pill').classList.remove('selected');
+      });
+    }
+
+    $$('.filter-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        $$('.filter-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        filterMode = tab.dataset.mode;
+
+        const grid = $('#catGrid');
+        if (filterMode === 'all') {
+          grid.classList.remove('visible');
+        } else {
+          grid.classList.add('visible');
+          resetCatPills();
+        }
+      });
+    });
+
+    // ── Category pills ──
+    $$('.cat-pill input').forEach(cb => {
+      cb.addEventListener('change', () => {
+        cb.closest('.cat-pill').classList.toggle('selected', cb.checked);
+      });
+    });
+
+    // ── Timer ──
+    function startTimer() {
+      startTime = Date.now();
+      const timerEl = $('#timer');
+      timerEl.classList.add('active');
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const m = Math.floor(elapsed / 60);
+        const s = elapsed % 60;
+        timerEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
+
+    function getElapsedTime() {
+      if (!startTime) return '0s';
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      if (elapsed < 60) return `${elapsed}s`;
+      return `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`;
+    }
+
+    // ── Log ──
+    function appendLog(text, type = 'info') {
+      const log = $('#logOutput');
+      const line = document.createElement('div');
+      line.className = `log-line log-${type}`;
+      line.textContent = text;
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // ── UI State transitions ──
+    function setView(view, domain = '') {
+      $('#emptyState').style.display = view === 'empty' ? 'flex' : 'none';
+      $('#logSection').classList.toggle('active', view === 'log' || view === 'results');
+      $('#resultsSection').classList.toggle('active', view === 'results');
+
+      $('#titleIdle').style.display = view === 'empty' ? 'inline' : 'none';
+      $('#titleActive').style.display = view === 'log' ? 'inline' : 'none';
+      $('#titleDone').style.display = view === 'results' ? 'inline' : 'none';
+
+      if (domain) {
+        $('#titleDomain').textContent = domain;
+        $('#titleDoneDomain').textContent = domain;
+      }
+    }
+
+    function setStatus(status) {
+      const badge = $('#statusBadge');
+      badge.className = 'status-badge';
+      if (status === 'running') {
+        badge.classList.add('running');
+        badge.innerHTML = '<span class="pulse-dot"></span><span class="status-text">L\u00e4uft</span>';
+      } else if (status === 'done') {
+        badge.classList.add('done');
+        badge.innerHTML = 'Fertig';
+      } else if (status === 'error') {
+        badge.classList.add('error');
+        badge.innerHTML = 'Fehler';
+      }
+    }
+
+    // ── Show results ──
+    function showResults(data) {
+      const section = $('#resultsSection');
+      const elapsed = getElapsedTime();
+      const categories = data.categories || {};
+      const maxCat = Math.max(...Object.values(categories).map(v => v), 1);
+
+      const catColors = {
+        products: 'var(--cat-products)',
+        blogs: 'var(--cat-blogs)',
+        pages: 'var(--cat-pages)',
+        collections: 'var(--cat-collections)',
+        policies: 'var(--cat-policies)',
+        other: 'var(--cat-other)',
+      };
+
+      let catBars = '';
+      for (const [cat, count] of Object.entries(categories)) {
+        if (count > 0) {
+          const pct = (count / maxCat) * 100;
+          const color = catColors[cat] || 'var(--text-muted)';
+          catBars += `
+            <div class="cat-bar-row">
+              <span class="cat-bar-label">${cat}</span>
+              <div class="cat-bar-track">
+                <div class="cat-bar-fill" style="width:${pct}%;background:${color}"></div>
+              </div>
+              <span class="cat-bar-count">${count}</span>
+            </div>`;
+        }
+      }
+
+      section.innerHTML = `
+        <div class="fade-in">
+          <div class="results-grid">
+            <div class="result-card total">
+              <div class="result-card-value">${data.total_urls || 0}</div>
+              <div class="result-card-label">URLs gesamt</div>
+            </div>
+            <div class="result-card success">
+              <div class="result-card-value">${data.successful || data.total_urls || 0}</div>
+              <div class="result-card-label">Erfolgreich</div>
+            </div>
+            <div class="result-card failed">
+              <div class="result-card-value">${data.failed || 0}</div>
+              <div class="result-card-label">Fehler</div>
+            </div>
+            <div class="result-card time">
+              <div class="result-card-value">${elapsed}</div>
+              <div class="result-card-label">Dauer</div>
+            </div>
+          </div>
+          ${catBars ? `
+          <div class="category-breakdown">
+            <h3>Kategorien</h3>
+            ${catBars}
+          </div>` : ''}
+          <div class="result-actions">
+            ${data.urls_file ? `<button class="btn-download" onclick="copyJsonToClipboard('${data.urls_file}', this)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              <span class="copy-label">URLs kopieren</span>
+            </button>` : ''}
+            ${data.content_file ? `<button class="btn-download" onclick="copyJsonToClipboard('${data.content_file}', this)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              <span class="copy-label">Content kopieren</span>
+            </button>` : ''}
+            ${(data.urls_file || data.content_file) ? `<button class="btn-secondary" onclick="openInFinder()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+              Im Finder &ouml;ffnen
+            </button>` : ''}
+            <button class="btn-secondary" onclick="resetUI()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+              Neuer Crawl
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Animate bars
+      requestAnimationFrame(() => {
+        section.querySelectorAll('.cat-bar-fill').forEach(bar => {
+          bar.style.width = bar.style.width;
+        });
+      });
+    }
+
+    function resetUI() {
+      crawling = false;
+      setView('empty');
+      setStatus('');
+      $('#statusBadge').className = 'status-badge';
+      $('#timer').classList.remove('active');
+      $('#timer').textContent = '0:00';
+      $('#logOutput').innerHTML = '';
+      $('#statUrls').textContent = '0';
+      $('#statExtracted').textContent = '0';
+      $('#statPolicies').textContent = '0';
+      $('#statErrors').textContent = '0';
+      $('#btnCrawl').classList.remove('loading');
+      $('#btnCrawl').disabled = false;
+      $('#domain').focus();
+    }
+
+    // ── Form submission ──
+    $('#crawlForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (crawling) return;
+
+      const domain = $('#domain').value.trim();
+      if (!domain) return;
+
+      const extractContent = $('#extractContent').checked;
+      const shopType = $('#shopType').value || null;
+      const maxUrls = $('#maxUrls').value ? parseInt($('#maxUrls').value) : null;
+
+      let categories = null;
+      let exclude = null;
+
+      if (extractContent && filterMode !== 'all') {
+        const checked = [...$$('.cat-pill input:checked')].map(c => c.value);
+        if (filterMode === 'include') categories = checked;
+        if (filterMode === 'exclude') exclude = checked;
+      }
+
+      // Start UI
+      crawling = true;
+      $('#btnCrawl').classList.add('loading');
+      $('#btnCrawl').disabled = true;
+      setView('log', domain);
+      setStatus('running');
+      startTimer();
+      appendLog(`Starte Crawl f\u00fcr ${domain}...`, 'header');
+
+      try {
+        const resp = await fetch('/crawl', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            domain,
+            shop_type: shopType,
+            extract_content: extractContent,
+            categories,
+            exclude,
+            max_urls: maxUrls
+          })
+        });
+
+        const data = await resp.json();
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        // Connect to SSE stream
+        const evtSource = new EventSource(`/stream/${data.job_id}`);
+
+        evtSource.addEventListener('log', (e) => {
+          const text = e.data;
+          let type = 'info';
+          if (text.includes('===') || text.startsWith('🔍') || text.startsWith('⏳') || text.startsWith('📊')) type = 'header';
+          else if (text.includes('✅') || text.includes('💾')) type = 'success';
+          else if (text.includes('❌') || text.includes('ERROR')) type = 'error';
+          appendLog(text, type);
+        });
+
+        evtSource.addEventListener('progress', (e) => {
+          const stats = JSON.parse(e.data);
+          if (stats.urls !== undefined) $('#statUrls').textContent = stats.urls;
+          if (stats.extracted !== undefined) $('#statExtracted').textContent = stats.extracted;
+          if (stats.policies !== undefined) $('#statPolicies').textContent = stats.policies;
+          if (stats.errors !== undefined) $('#statErrors').textContent = stats.errors;
+        });
+
+        evtSource.addEventListener('done', (e) => {
+          evtSource.close();
+          stopTimer();
+          const result = JSON.parse(e.data);
+          crawling = false;
+          $('#btnCrawl').classList.remove('loading');
+          $('#btnCrawl').disabled = false;
+          setStatus('done');
+          setView('results', domain);
+          showResults(result);
+        });
+
+        evtSource.addEventListener('error', (e) => {
+          if (e.data) {
+            appendLog(e.data, 'error');
+          }
+          evtSource.close();
+          stopTimer();
+          crawling = false;
+          $('#btnCrawl').classList.remove('loading');
+          $('#btnCrawl').disabled = false;
+          setStatus('error');
+        });
+
+      } catch (err) {
+        appendLog(`Fehler: ${err.message}`, 'error');
+        stopTimer();
+        crawling = false;
+        $('#btnCrawl').classList.remove('loading');
+        $('#btnCrawl').disabled = false;
+        setStatus('error');
+      }
+    });
+
+    // ── Copy JSON to clipboard (with fallback for localhost) ──
+    async function copyJsonToClipboard(filename, btn) {
+      try {
+        const resp = await fetch(`/content/${encodeURIComponent(filename)}`);
+        if (!resp.ok) throw new Error('Datei nicht gefunden');
+        const text = await resp.text();
+
+        // Try modern API first, fall back to textarea+execCommand for localhost
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+
+        const label = btn.querySelector('.copy-label');
+        const origText = label.textContent;
+        label.textContent = 'Kopiert!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          label.textContent = origText;
+          btn.classList.remove('copied');
+        }, 2000);
+      } catch (err) {
+        alert('Kopieren fehlgeschlagen: ' + err.message);
+      }
+    }
+
+    // ── Open output folder in Finder ──
+    async function openInFinder() {
+      await fetch('/open-output', { method: 'POST' });
+    }
+
+    // ── Keyboard shortcut ──
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!crawling) $('#btnCrawl').click();
+      }
+    });
+  </script>
+</body>
+</html>

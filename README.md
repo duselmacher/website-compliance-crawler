@@ -24,7 +24,16 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Nutzung
+## Web-Interface (empfohlen)
+
+```bash
+source venv/bin/activate
+python app.py
+```
+
+Öffnet automatisch den Browser auf `http://localhost:8080`. Domain eingeben, Optionen wählen, Crawl starten. Live-Fortschritt und Ergebnisse direkt im Browser.
+
+## CLI-Nutzung
 
 ```bash
 # Virtual Environment aktivieren
