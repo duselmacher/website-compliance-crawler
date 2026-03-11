@@ -13,5 +13,8 @@
 
 ## Features
 - [ ] Retry-Logik bei fehlgeschlagenen HTTP-Requests
-- [ ] Fortschrittsanzeige bei Content-Extraktion (aktuell nur Endstatistik)
+- [ ] Granulare Fortschrittsanzeige im Web-Interface (URL-für-URL statt nur Endstatistik)
 - [x] Policy-Pfade für Shopify, WooCommerce und generisch – steuerbar via `--shop-type`
+- [x] Web-Interface (Flask + SSE, localhost:8080)
+- [x] Separate Copy-Buttons für URLs JSON und Content JSON
+- [x] Clipboard-Fallback für localhost (textarea + execCommand)

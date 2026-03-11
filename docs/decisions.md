@@ -31,3 +31,13 @@
 - **Entscheidung:** Policy-Pfade als Dict nach Shop-Typ (shopify, woocommerce, generic) statt automatischer Shop-Erkennung
 - **Grund:** Auto-Detection (Meta-Tags, Signaturen) wäre komplex und fehleranfällig. `--shop-type` CLI-Flag ist einfacher und explizit. Ohne Angabe werden alle Pfade probiert.
 - **Konsequenz:** Neue Shop-Systeme nur durch Ergänzung des POLICY_PATHS Dicts hinzufügbar
+
+## 2026-03-11 – Flask + SSE für Web-Interface
+- **Entscheidung:** Lokale Flask-App mit Server-Sent Events statt TUI (Textual) oder native macOS App
+- **Grund:** Browser-UI ist universell, Live-Streaming via SSE ist einfach, Flask ist minimal. "Ding starten und Fenster geht auf" als Anforderung.
+- **Konsequenz:** flask als neue Dependency, app.py + templates/index.html als neue Dateien
+
+## 2026-03-11 – Clipboard-Fallback für localhost
+- **Entscheidung:** textarea + execCommand('copy') als Fallback wenn navigator.clipboard.writeText() fehlschlägt
+- **Grund:** Clipboard API erfordert Secure Context (HTTPS), localhost über Flask ist plain HTTP
+- **Konsequenz:** Funktioniert zuverlässig, execCommand ist deprecated aber noch breit unterstützt
