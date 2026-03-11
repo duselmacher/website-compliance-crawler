@@ -142,6 +142,14 @@ Die compliance-relevanten Felder (Titel, Meta-Description, Headings) stehen **vo
 
 ## Workflow mit Clara
 
+### Via Web-Interface (empfohlen)
+
+1. `python app.py` → Browser öffnet sich
+2. Domain eingeben, Optionen wählen, Crawl starten
+3. Nach Abschluss: **Content kopieren** → direkt in Claude Projects einfügen
+
+### Via CLI
+
 1. **Crawl durchführen:**
    ```bash
    python crawler.py --domain probiom.com --extract-content --shop-type shopify --exclude blogs
@@ -176,7 +184,7 @@ Die compliance-relevanten Felder (Titel, Meta-Description, Headings) stehen **vo
 source venv/bin/activate && pytest -q
 
 # Linting
-source venv/bin/activate && ruff check crawler.py src/ tests/
+source venv/bin/activate && ruff check crawler.py app.py src/ tests/
 ```
 
 Entwickelt mit Claude Code für Water & Salt AG.
