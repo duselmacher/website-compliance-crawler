@@ -13,38 +13,89 @@ from pathlib import Path
 from typing import Dict, List
 from urllib.parse import urlparse
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / 'src'))
+# Add project root to path (for src.* imports when run directly via shebang)
+sys.path.insert(0, str(Path(__file__).parent))
 
-from sitemap_parser import crawl_all_sitemaps
-from content_extractor import extract_multiple_urls
 import requests
 
+from src.content_extractor import extract_multiple_urls
+from src.sitemap_parser import crawl_all_sitemaps
 
-# Standard Policy-URLs (Shopify und andere Shops)
-STANDARD_POLICY_PATHS = [
-    '/policies/legal-notice',      # Impressum
-    '/policies/privacy-policy',    # Datenschutz
-    '/policies/terms-of-service',  # AGB
-    '/policies/refund-policy',     # Widerruf
-    '/policies/shipping-policy',   # Versand
-]
+# Policy-Pfade nach Shop-System
+POLICY_PATHS = {
+    'shopify': [
+        '/policies/legal-notice',
+        '/policies/privacy-policy',
+        '/policies/terms-of-service',
+        '/policies/refund-policy',
+        '/policies/shipping-policy',
+    ],
+    'woocommerce': [
+        '/privacy-policy',
+        '/terms-and-conditions',
+        '/refund_returns',
+        '/impressum',
+        '/agb',
+        '/widerrufsbelehrung',
+    ],
+    'generic': [
+        '/impressum',
+        '/datenschutz',
+        '/agb',
+        '/privacy-policy',
+        '/privacy',
+        '/terms',
+        '/terms-of-service',
+        '/legal-notice',
+        '/legal',
+        '/widerruf',
+        '/refund-policy',
+    ],
+}
+
+VALID_SHOP_TYPES = sorted(POLICY_PATHS.keys())
 
 
-def discover_policy_urls(domain: str) -> List[str]:
+def get_policy_paths(shop_type: str = None) -> List[str]:
     """
-    Prüft Standard-Policy-URLs die oft nicht in der Sitemap sind.
+    Gibt die Policy-Pfade für einen Shop-Typ zurück.
+
+    Args:
+        shop_type: Shop-Typ ('shopify', 'woocommerce', 'generic') oder None für alle
+
+    Returns:
+        Deduplizierte Liste von Policy-Pfaden
+    """
+    if shop_type:
+        return POLICY_PATHS.get(shop_type, POLICY_PATHS['generic'])
+
+    # Ohne Angabe: alle Pfade kombinieren (dedupliziert, Reihenfolge beibehalten)
+    all_paths = []
+    seen = set()
+    for paths in POLICY_PATHS.values():
+        for path in paths:
+            if path not in seen:
+                seen.add(path)
+                all_paths.append(path)
+    return all_paths
+
+
+def discover_policy_urls(domain: str, shop_type: str = None) -> List[str]:
+    """
+    Prüft Policy-URLs die oft nicht in der Sitemap sind.
 
     Args:
         domain: Die Domain zum Prüfen
+        shop_type: Shop-Typ für gezielte Pfade (None = alle probieren)
 
     Returns:
         Liste von existierenden Policy-URLs
     """
     found_urls = []
     base_url = f"https://{domain}"
+    paths = get_policy_paths(shop_type)
 
-    for path in STANDARD_POLICY_PATHS:
+    for path in paths:
         url = f"{base_url}{path}"
         try:
             response = requests.head(url, timeout=5, allow_redirects=True)
@@ -106,13 +157,14 @@ def print_stats(urls_data: Dict) -> None:
         print(f"\nErrors: {len(urls_data['errors'])}")
 
 
-def crawl_urls_only(domain: str, output_dir: Path) -> Dict:
+def crawl_urls_only(domain: str, output_dir: Path, shop_type: str = None) -> Dict:
     """
     Crawlt nur die Sitemap und sammelt URLs.
 
     Args:
         domain: Die Domain zum Crawlen
         output_dir: Output-Verzeichnis
+        shop_type: Shop-Typ für Policy-Discovery (None = alle probieren)
 
     Returns:
         Dictionary mit URL-Daten
@@ -130,7 +182,7 @@ def crawl_urls_only(domain: str, output_dir: Path) -> Dict:
 
     # Policy-URLs entdecken (oft nicht in Sitemap)
     print("\n🔍 Checking for policy pages...")
-    policy_urls = discover_policy_urls(domain)
+    policy_urls = discover_policy_urls(domain, shop_type)
     new_policy_urls = [url for url in policy_urls if url not in existing_urls]
     if new_policy_urls:
         urls_data['urls']['policies'].extend(new_policy_urls)
@@ -156,7 +208,8 @@ def crawl_urls_only(domain: str, output_dir: Path) -> Dict:
 
 
 def crawl_with_content(domain: str, output_dir: Path, max_urls: int = None,
-                       categories: List[str] = None, exclude: List[str] = None) -> tuple:
+                       categories: List[str] = None, exclude: List[str] = None,
+                       shop_type: str = None) -> tuple:
     """
     Crawlt Sitemap UND extrahiert Content von allen URLs.
 
@@ -166,12 +219,13 @@ def crawl_with_content(domain: str, output_dir: Path, max_urls: int = None,
         max_urls: Maximale Anzahl URLs zum Extrahieren (None = alle)
         categories: Liste von Kategorien zum Filtern (None = alle) - inklusiv
         exclude: Liste von Kategorien zum Ausschließen (None = keine) - exklusiv
+        shop_type: Shop-Typ für Policy-Discovery (None = alle probieren)
 
     Returns:
         Tuple von (urls_data, content_data)
     """
     # 1. Crawl URLs
-    urls_data = crawl_urls_only(domain, output_dir)
+    urls_data = crawl_urls_only(domain, output_dir, shop_type)
 
     # 2. ALWAYS include homepage first
     homepage_url = f"https://{domain}"
@@ -274,8 +328,11 @@ Examples:
   # Alles AUSSER Blogs crawlen
   %(prog)s --domain probiom.com --extract-content --exclude blogs
 
-  # Alles ausser Blogs und Collections
-  %(prog)s --domain probiom.com --extract-content --exclude blogs,collections
+  # Shopify-Shop gezielt crawlen
+  %(prog)s --domain probiom.com --shop-type shopify
+
+  # WooCommerce-Shop
+  %(prog)s --domain example.com --shop-type woocommerce
 
   # Mit URL-Limit
   %(prog)s --domain probiom.com --extract-content --max-urls 100
@@ -310,6 +367,14 @@ Examples:
         '--exclude',
         type=str,
         help='Diese Kategorien AUSSCHLIESSEN (z.B. --exclude blogs)'
+    )
+
+    parser.add_argument(
+        '--shop-type',
+        type=str,
+        choices=VALID_SHOP_TYPES,
+        help=f'Shop-System für Policy-Discovery ({", ".join(VALID_SHOP_TYPES)}). '
+             'Ohne Angabe werden alle bekannten Pfade probiert.'
     )
 
     parser.add_argument(
@@ -373,10 +438,11 @@ Examples:
     try:
         if args.extract_content:
             # Full Crawl mit Content
-            crawl_with_content(domain, args.output, args.max_urls, categories, exclude)
+            crawl_with_content(domain, args.output, args.max_urls, categories,
+                               exclude, args.shop_type)
         else:
             # Nur URLs
-            crawl_urls_only(domain, args.output)
+            crawl_urls_only(domain, args.output, args.shop_type)
 
         print_header("✅ CRAWLING COMPLETED")
         return 0

@@ -63,7 +63,7 @@ def test_invalid_domain_returns_error(monkeypatch, capsys):
 def test_valid_url_only_run_calls_crawler(monkeypatch):
     called = {}
 
-    def fake_crawl(domain, output_dir):
+    def fake_crawl(domain, output_dir, shop_type=None):
         called["domain"] = domain
         called["output_dir"] = str(output_dir)
         return {}

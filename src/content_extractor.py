@@ -4,12 +4,13 @@ Content Extractor für Website Compliance Crawler.
 Extrahiert strukturierte Inhalte von Webseiten für spätere Compliance-Analyse.
 """
 
-import requests
-from bs4 import BeautifulSoup
+import re
+import time
 from typing import Dict, List
 from urllib.parse import urljoin
-import re
 
+import requests
+from bs4 import BeautifulSoup
 
 # Timeout für HTTP Requests (Sekunden)
 REQUEST_TIMEOUT = 15
@@ -318,8 +319,8 @@ def extract_content(url: str) -> Dict:
         'url': url,
         'title': '',
         'meta_description': '',
-        'full_text': '',
         'headings': {'h1': [], 'h2': [], 'h3': []},
+        'full_text': '',
         'images': [],
         'product_info': {'name': '', 'description': '', 'price': ''},
         'error': None
@@ -332,11 +333,11 @@ def extract_content(url: str) -> Dict:
         # 2. HTML parsen
         soup = BeautifulSoup(html, 'html.parser')
 
-        # 3. Daten extrahieren
+        # 3. Daten extrahieren (Compliance-relevante Felder zuerst)
         result['title'] = extract_title(soup)
         result['meta_description'] = extract_meta_description(soup)
-        result['full_text'] = extract_full_text(soup)
         result['headings'] = extract_headings(soup)
+        result['full_text'] = extract_full_text(soup)
         result['images'] = extract_images(soup, url)
         result['product_info'] = extract_product_info(soup)
 
@@ -370,7 +371,6 @@ def extract_multiple_urls(urls: List[str]) -> List[Dict]:
         results.append(content)
 
         # Kleine Pause um Server nicht zu überlasten
-        import time
         time.sleep(0.5)
 
     return results

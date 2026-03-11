@@ -7,7 +7,5 @@ beautifulsoup4>=4.12.0
 # Testing
 pytest>=7.4.0
 
-# Optional: For later features
-# black>=23.0.0  # Code Formatting
-# pylint>=2.17.0  # Linting
-# mypy>=1.5.0  # Type Checking
+# Linting
+ruff>=0.4.0

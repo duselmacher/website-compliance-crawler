@@ -9,12 +9,12 @@ Unterstützt:
 - URL-Kategorisierung nach Pfad-Typ
 """
 
-import requests
-import xml.etree.ElementTree as ET
-from urllib.parse import urlparse
-from typing import Any, List, Dict, Set
 import time
+import xml.etree.ElementTree as ET
+from typing import Any, Dict, List, Set
+from urllib.parse import urlparse
 
+import requests
 
 # XML Namespaces für Sitemaps
 SITEMAP_NS = {'sm': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
@@ -306,7 +306,7 @@ def crawl_all_sitemaps(domain: str) -> Dict[str, Any]:
                     urls = parse_sitemap(current_sitemap)
                     all_urls.update(urls)
 
-            except Exception as e:
+            except Exception:
                 # Wenn Sitemap Index fehlschlägt, versuche als normale Sitemap
                 try:
                     urls = parse_sitemap(current_sitemap)
