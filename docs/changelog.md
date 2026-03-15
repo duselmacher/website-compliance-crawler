@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-03-15
+- Clipboard Pre-Fetch Fix: JSON-Dateien werden nach Crawl-Ende vorgeladen, Copy-Button arbeitet synchron (kein User-Gesture-Verlust mehr)
+
 ## 2026-03-11
 - Projekt-Init: CLAUDE.md und docs/-Struktur (decisions, todo, ideas, changelog, sessions/) angelegt
 - JSON-Reihenfolge: headings und meta_description jetzt vor full_text (Compliance-Relevanz)
