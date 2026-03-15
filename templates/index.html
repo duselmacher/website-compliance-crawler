@@ -924,6 +924,7 @@
     // ── State ──
     let filterMode = 'all';
     let crawling = false;
+    let prefetchedFiles = {};
     let timerInterval = null;
     let startTime = null;
 
@@ -1121,6 +1122,7 @@
 
     function resetUI() {
       crawling = false;
+      prefetchedFiles = {};
       setView('empty');
       setStatus('');
       $('#statusBadge').className = 'status-badge';
@@ -1216,6 +1218,18 @@
           setStatus('done');
           setView('results', domain);
           showResults(result);
+          // Pre-fetch file contents for clipboard copy (user gesture expires after async fetch)
+          prefetchedFiles = {};
+          if (result.urls_file) {
+            fetch(`/content/${encodeURIComponent(result.urls_file)}`)
+              .then(r => r.ok ? r.text() : '')
+              .then(t => { prefetchedFiles[result.urls_file] = t; });
+          }
+          if (result.content_file) {
+            fetch(`/content/${encodeURIComponent(result.content_file)}`)
+              .then(r => r.ok ? r.text() : '')
+              .then(t => { prefetchedFiles[result.content_file] = t; });
+          }
         });
 
         evtSource.addEventListener('error', (e) => {
@@ -1240,37 +1254,32 @@
       }
     });
 
-    // ── Copy JSON to clipboard (with fallback for localhost) ──
-    async function copyJsonToClipboard(filename, btn) {
-      try {
-        const resp = await fetch(`/content/${encodeURIComponent(filename)}`);
-        if (!resp.ok) throw new Error('Datei nicht gefunden');
-        const text = await resp.text();
-
-        // Try modern API first, fall back to textarea+execCommand for localhost
-        try {
-          await navigator.clipboard.writeText(text);
-        } catch {
-          const ta = document.createElement('textarea');
-          ta.value = text;
-          ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-        }
-
-        const label = btn.querySelector('.copy-label');
-        const origText = label.textContent;
-        label.textContent = 'Kopiert!';
-        btn.classList.add('copied');
-        setTimeout(() => {
-          label.textContent = origText;
-          btn.classList.remove('copied');
-        }, 2000);
-      } catch (err) {
-        alert('Kopieren fehlgeschlagen: ' + err.message);
+    // ── Copy JSON to clipboard ──
+    // Uses pre-fetched content to avoid async fetch which loses user gesture context
+    function copyJsonToClipboard(filename, btn) {
+      const text = prefetchedFiles[filename];
+      if (!text) {
+        alert('Datei-Inhalt noch nicht geladen. Bitte kurz warten und erneut versuchen.');
+        return;
       }
+
+      // textarea+execCommand works reliably with user gesture on localhost (HTTP)
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+
+      const label = btn.querySelector('.copy-label');
+      const origText = label.textContent;
+      label.textContent = 'Kopiert!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        label.textContent = origText;
+        btn.classList.remove('copied');
+      }, 2000);
     }
 
     // ── Open output folder in Finder ──
